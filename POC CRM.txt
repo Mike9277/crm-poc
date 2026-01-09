@@ -1,0 +1,90 @@
+PROJECT DESCRIPTION
+The objective of this project is to design and implement a POC of a “CRM” system capable of managing the following minimal core entities:
+- Users
+- Person
+- Company
+- WebformSubmission
+
+The CRM will expose a set of RESTful APIs required to seamlessly integrate with a custom Drupal module developed by COMMpla and provided for the task.
+This module will be responsible for periodically sending contact data and webform submissions to the CRM via a cron-based process, ensuring reliable and asynchronous data synchronization.
+
+
+SYSTEM ARCHITECTURE
+The entire solution will be containerized using Docker and will include at least the following components:
+1. Drupal Instance
+	- Configured with the custom module installed (provided)
+	- Responsible for collecting contact data and webform submissions
+	- Periodically sends data to the CRM APIs via cron jobs
+
+2. Frontend Application
+	- Provides a user interface for visualizing and managing Users, Persons, and Webform Submissions
+	- Includes search and filtering capabilities for all supported entities
+
+3. Backend API
+	- Exposes REST APIs to receive, store, and retrieve data from Drupal
+	- Implements the business logic of the CRM
+
+4. Database Layer
+	- Based on MySQL
+	Stores all CRM entities and related metadata
+
+TECHNOLOGY STACK
+The project will leverage the following technologies:
+
+- Backend / API: PHP or Django
+- Frontend: React or Angular
+- CMS Integration: Drupal (with a custom module)
+- Database: MySQL
+- Infrastructure: Docker (multi-container setup)
+
+EXPECTED OUTCOME
+The final outcome will be a fully containerized POC demonstrating:
+
+- End-to-end data flow from Drupal to the CRM
+- Proper API-based integration between systems
+- A functional frontend for data visualization and search
+- A modular and extensible architecture suitable for future production development
+
+The frontend must support the following user stories:
+
+- Enable full CRUD operations (Create, Read, Update, Delete) for the Person entity.
+- Implement a mechanism to receive webform submission data, where the email address is always mandatory.
+- Automatically associate each webform submission with an existing Person in the CRM, based on the email address.
+- If the related Person does not exist, automatically create a new Person record and link it to the incoming webform submission.
+
+- Ensure that webform submission data is displayed in a flexible and dynamic way, considering that the structure and fields of webforms may vary.
+- Include the source website as one of the tags associated with the Person and/or the webform submission when data is pushed to the CRM.
+- Provide the ability to import Person data via CSV, through a guided import wizard that allows users to map CSV fields to CRM attributes.
+
+FRONTEND INTERFACE (desired)
+
+| All > [____________________________________________] search                                    + create person |	|
+| Email															|
+| starts with >														|
+| _value________________________											|
+|															|
+| Actions >														|
+| [] First name | Last name | Email | Website | Country | Organisation | Domain | Tags | Roles | Webform | PPG | Type 	|
+
+
+Search selecting fields:
+	- Fist name
+	- Last name
+	- Country
+	- Website
+	- Webform
+	- Organisation
+	- Domain
+	- Roles
+	- Webform submission
+	- Tags
+	- Type
+	- PPG
+	- Notes
+
+Crud API operations
+	- List
+	- Read
+	- Create
+	- Update
+	- Delete

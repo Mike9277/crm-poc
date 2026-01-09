@@ -1,0 +1,5 @@
+name: CRM integration
+type: module
+description: 'this module integrates with Trust-IT crm_integration'
+
+core_version_requirement: ^8 || ^9 || ^10

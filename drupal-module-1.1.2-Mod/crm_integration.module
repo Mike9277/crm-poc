@@ -1,0 +1,424 @@
+<?php
+/**
+ * @file
+ * A description of what your module does.
+ */
+
+use Drupal\crm_integration\integration\BackendIntegration;
+use Drupal\file\Entity\File;
+use Drupal\user\Entity\User;
+use Drupal\webform\Entity\Webform;
+use Drupal\webform\Entity\WebformSubmission;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\GuzzleException;
+use Mailjet\Resources;
+
+//function filterAndRemoveDuplicates($arrayOfObjects): array {
+//  $filteredArray = [];
+//  $emailToLastCreatedAt = [];
+//
+//  // Iterate through the array of objects in reverse order
+//  for ($i = count($arrayOfObjects) - 1; $i >= 0; $i--) {
+//    $currentObject = $arrayOfObjects[$i];
+//
+//    if (!isset($emailToLastCreatedAt[$currentObject->email])) {
+//      // If email not encountered before, add to the result and store the created_at value
+//      $filteredArray[] = $currentObject;
+//      $emailToLastCreatedAt[$currentObject->email] = $currentObject->created_at;
+//    } elseif ($currentObject->created_at > $emailToLastCreatedAt[$currentObject->email]) {
+//      // If email encountered again with a newer created_at value, update the result
+//      // and the created_at value
+//      $filteredArray = array_filter($filteredArray, function ($obj) use ($currentObject) {
+//        return $obj->email !== $currentObject->email;
+//      });
+//      $filteredArray[] = $currentObject;
+//      $emailToLastCreatedAt[$currentObject->email] = $currentObject->created_at;
+//    }
+//  }
+//
+//  // Reverse the filtered array to maintain the original order
+//  return array_reverse($filteredArray);
+//}
+
+function filterAndRemoveDuplicates($arrayOfObjects): array
+{
+  $emailToObject = [];
+
+  foreach ($arrayOfObjects as $obj) {
+    if (!isset($emailToObject[$obj->email]) || $obj->created_at > $emailToObject[$obj->email]->created_at) {
+      $emailToObject[$obj->email] = $obj;
+    }
+  }
+
+  return $emailToObject;
+}
+
+function generatePPGEmailArray($arrayOfObjects): array
+{
+  $emailRevokedArray = [];
+
+  foreach ($arrayOfObjects as $object) {
+    $email = $object->email;
+    $isAccepted = $object->revoked_at === null;
+
+    // Use the email as the key and the corresponding value
+    $emailRevokedArray[$email] = [
+      'ppgUpdated' => $isAccepted ? $object->created_at : $object->revoked_at,
+      'isAccepted' => $isAccepted,
+    ];
+  }
+
+  return $emailRevokedArray;
+}
+
+
+/**
+ * Implements hook_cron().
+ */
+function crm_integration_cron(): void
+{
+  // Load the crm_integration settings.
+  $config = Drupal::config('crm_integration.settings');
+  $website = Drupal::config('system.site')->get('name');
+  $state = Drupal::state();
+  $url = $config->get('site_url');
+  $url = str_replace('www.', '', $url);
+
+  $project_key = Drupal::config('trust_ppgm.settings')->get('trust_ppgm_general.project_id.value');
+  // HTTP GET request to get the PPG.
+  $http = Drupal::httpClient();
+  try {
+    $response = $http->get(
+      'https://ppg-api.trust-itservices.dev/projects/' . $project_key . '/consents',
+      [
+        'headers' => [
+          'Authorization' => 'Token 12e40283023131fa0c7eac1c95eace9ec88664f1',
+        ]
+      ]
+    );
+    $content = json_decode(
+      $response->getBody()->getContents(),
+      FALSE,
+      512,
+      JSON_THROW_ON_ERROR | 0
+    );
+    $consents = generatePPGEmailArray(filterAndRemoveDuplicates($content));
+  } catch (GuzzleException | ConnectException | JsonException $exception) {
+    $consents = [];
+  }
+
+  // Create a new backend client.
+  $key = $config->get('crm_api_key');
+  $base_url = $config->get('crm_api_base_url');
+  if (!$key || !$base_url) {
+    return;
+  }
+  $backend = new BackendIntegration($base_url, $key);
+  try {
+    $website_id = $backend->sendWebsite($website, $url);
+  } catch (\RuntimeException $e) {
+    Drupal::logger('crm_integration')->error($e->getMessage());
+    $website_id = null;
+  }
+  if ($website_id === null) {
+    return;
+  }
+
+  $mj_public = $config->get('mailjet_api_key_public');
+  $mj_private = $config->get('mailjet_api_key_private');
+
+  if (!empty($mj_public) && !empty($mj_private)) {
+    // Create a new Mailjet client.
+    $mj = new \Mailjet\Client($mj_public, $mj_private);
+    $response = $mj->get(Resources::$Campaign, [
+      'filters' => [
+        'Limit' => 1000,
+        'IsDeleted' => false,
+        'FromTS' => $state->get('mailjet_last_sync') ?? 0
+      ]
+    ]);
+    $state->set('mailjet_last_sync', time());
+    foreach ($response->getData() as $campaign) {
+      $list_id = $campaign['ListID'];
+      $response = $mj->get(Resources::$Contactslist, ['id' => $list_id]);
+      $list = $response->getData()[0];
+      $crm_list = $backend->getList((string) $list_id);
+      if ($crm_list === null) {
+        try {
+          $crm_list_id = $backend->sendList($list['Name'], (int) $list_id);
+        } catch (\RuntimeException $e) {
+          Drupal::logger('crm_integration')->error($e->getMessage());
+          $crm_list_id = null;
+        }
+      } else {
+        try {
+          $crm_list_id = $backend->updateList(
+            $crm_list->id,
+            [
+              'name' => $list['Name'],
+              'mailjet_id' => (int) $list_id
+            ]
+          );
+        } catch (\RuntimeException $e) {
+          Drupal::logger('crm_integration')->error($e->getMessage());
+          $crm_list_id = null;
+        }
+      }
+
+      if ($crm_list_id === null) {
+        continue;
+      }
+
+      $crm_campaign = $backend->getCampaign((string) $campaign['ID']);
+      if ($crm_campaign === null) {
+        try {
+          $backend->sendCampaign($campaign['Subject'], (int) $campaign['ID'], $website_id, [$crm_list_id]);
+        } catch (\RuntimeException $e) {
+          Drupal::logger('crm_integration')->error($e->getMessage());
+        }
+      } else {
+        try {
+          $backend->updateCampaign(
+            $crm_campaign->id,
+            [
+              'name' => $campaign['Subject'],
+              'mailjet_id' => (int) $campaign['ID'],
+              'target_lists_ids' => [$crm_list_id],
+            ]
+          );
+        } catch (\RuntimeException $e) {
+          Drupal::logger('crm_integration')->error($e->getMessage());
+        }
+      }
+
+      $contacts = [];
+      $crm_contacts_id = [];
+      $offset = 0;
+      do {
+        $filters = [
+          'filters' =>
+            [
+              'ContactsList' => $list_id,
+              'Limit' => 1000,
+              'Offset' => $offset,
+            ],
+        ];
+        $response = $mj->get(Resources::$Contact, $filters);
+        $contacts = array_merge($contacts, $response->getData());
+        $offset += 1000;
+      } while ($response->getTotal() > 0);
+      if (!set_time_limit(count($contacts) * 5)) {
+        throw new RuntimeException('Could not set time limit');
+      }
+      foreach ($contacts as $contact) {
+        $crm_contact = $backend->sendContact(
+          [
+            'email' => $contact['Email'],
+          ]
+        );
+        $crm_contacts_id[] = $crm_contact->id;
+      }
+      try {
+        $backend->sendListContacts($crm_list_id, $crm_contacts_id);
+      } catch (\RuntimeException $e) {
+        Drupal::logger('crm_integration')->error($e->getMessage());
+      }
+    }
+  }
+
+
+  // Check if synchronization is enabled.
+  $sync_enabled = $config->get('syncronize');
+
+  // Check if synchronization is enabled for each webform and process accordingly.
+  foreach ($config->get() as $key => $value) {
+    if ($value && strncmp($key, 'webform_', strlen('webform_')) === 0) {
+      // Get the webform id from the key (replace only 1st occurrence).
+      $webform_id = preg_replace('/' . preg_quote('webform_', '/') . '/', '', $key, 1);
+
+      //Get the webform.
+      $webform = Webform::load($webform_id);
+      if ($webform === null) {
+        continue;
+      }
+
+      assert($webform instanceof Webform);
+      try {
+        $webform_id_on_crm = $backend->sendWebform($webform_id, $webform->label(), $webform->getDescription(), $website_id);
+      } catch (\RuntimeException $e) {
+        Drupal::logger('crm_integration')->error($e->getMessage());
+        $webform_id_on_crm = null;
+      }
+      if ($webform_id_on_crm === null) {
+        continue;
+      }
+
+      // Get all submissions for the webform.
+      $query = Drupal::database()->select('webform_submission', 'ws')
+        ->fields('ws', ['sid'])
+        ->condition('ws.webform_id', $webform_id)
+        ->condition('ws.changed', $state->get("webform_last_sync") ?? 0, '>');
+      $submission_ids = $query->execute()->fetchCol();
+
+      $state->set('webform_last_sync', time());
+      // Load each submission and process accordingly.
+      foreach ($submission_ids as $submission_id) {
+        $submission = WebformSubmission::load($submission_id);
+        assert($submission instanceof WebformSubmission);
+        $values = [];
+        foreach ($submission->getData() as $key2 => $value2) {
+          if (is_array($value2)) {
+            $values[$key2] = implode(',', $value2);
+          } else {
+            $values[$key2] = $value2;
+          }
+        }
+        try {
+          $backend->sendWebformSubmission($website_id, $webform_id_on_crm, $submission_id, $values);
+        } catch (\RuntimeException $e) {
+          Drupal::logger('crm_integration')->error($e->getMessage());
+        }
+      }
+    }
+  }
+
+  // Get all users.
+  if ($sync_enabled) {
+    $query = Drupal::entityQuery('user')
+      ->accessCheck()
+      ->condition('uid', 0, '>')
+      ->condition('status', 1);
+    $group = $query->orConditionGroup()
+      ->condition('changed', $state->get("last_sync") ?? 0, '>')
+      ->condition('login', $state->get("last_sync") ?? 0, '>');
+
+    $query->condition($group);
+    $uids = $query->execute();
+    $state->set('last_sync', time());
+    if (!set_time_limit(count($uids) * 5)) {
+      throw new RuntimeException('Could not set time limit');
+    }
+
+    foreach (User::loadMultiple($uids) as $user) {
+      $arrDrupalKeys = [
+        'uid',
+        'uuid',
+        'langcode',
+        'preferred_langcode',
+        'preferred_admin_langcode',
+        'name',
+        'pass',
+        'mail',
+        'timezone',
+        'status',
+        'created',
+        'changed',
+        'access',
+        'login',
+        'init',
+        'default_langcode',
+        'field_first_name',
+        'field_last_name',
+        'field_phone_number',
+        'field_client',
+        'field_consent',
+        'user_picture',
+      ];
+
+      $arr = [
+        'first_name' => 'field_first_name',
+        'last_name' => 'field_last_name',
+        'email' => 'mail',
+        'phone_number' => 'field_phone_number',
+      ];
+
+      $values = [];
+
+      foreach ($arr as $key => $value) {
+        if ($user->hasField($value)) {
+          $values[$key] = $user->get($value)->value;
+        }
+      }
+
+      if (empty($values['first_name']) && empty($values['last_name'])) {
+        $values['first_name'] = $user->get('name')->value;
+      }
+
+      try {
+        $contact = $backend->sendContact($values);
+      } catch (\RuntimeException | \Error $e) {
+        Drupal::logger('crm_integration')->error("Failed to send contact {$values['first_name']} {$values['last_name']}: {$e->getMessage()}");
+        $contact = null;
+      }
+      if ($contact === null) {
+        continue;
+      }
+      $contact_id = $contact->id;
+
+      $extraData = array_diff_key($user->getFields(), array_flip($arrDrupalKeys));
+
+      try {
+        $websiteUser = $backend->sendWebsiteUser(
+          $website_id,
+          $contact_id,
+          $user->get('mail')->value ?? '',
+          $consents,
+          $user->get('created')->value,
+          $user->get('changed')->value,
+          $user->get('login')->value ?? '',
+          $extraData
+        );
+      } catch (\RuntimeException $e) {
+        Drupal::logger('crm_integration')->error($e->getMessage());
+        $websiteUser = null;
+      }
+
+      if ($user->hasField('user_picture')) {
+        $file = $user->get('user_picture')->entity;
+      } else {
+        $file = null;
+      }
+      $picture_id = null;
+      if ($file instanceof File) {
+        $contact_picture_id = $contact->picture_id ?? $contact->pictureId ?? null;
+        $contact_picture_name = $contact->picture_name ?? $contact->pictureName ?? null;
+        if (!$contact_picture_id || $file->getFilename() !== $contact_picture_name) {
+          try {
+            $picture_id = $backend->sendAttachment(
+              $file->getFilename(),
+              $file->getMimeType(),
+              file_get_contents($file->getFileUri())
+            );
+          } catch (\RuntimeException $e) {
+            Drupal::logger('crm_integration')->error($e->getMessage());
+          }
+          try {
+            $backend->updateContact($contact_id, ['picture_id' => $picture_id]);
+          } catch (\RuntimeException $e) {
+            Drupal::logger('crm_integration')->error($e->getMessage());
+          }
+        }
+
+        $website_user_picture_id = $websiteUser ? ($websiteUser->picture_id ?? $websiteUser->pictureId ?? null) : null;
+        $website_user_picture_name = $websiteUser ? ($websiteUser->picture_name ?? $websiteUser->pictureName ?? null) : null;
+        if (!$website_user_picture_id || $file->getFilename() !== $website_user_picture_name) {
+          try {
+            $picture_id = $backend->sendAttachment(
+              $file->getFilename(),
+              $file->getMimeType(),
+              file_get_contents($file->getFileUri())
+            );
+          } catch (\RuntimeException $e) {
+            Drupal::logger('crm_integration')->error($e->getMessage());
+            $picture_id = null;
+          }
+          try {
+            $backend->updateWebsiteUser(($nullsafeVariable3 = $websiteUser) ? $nullsafeVariable3->id : null, ['picture_id' => $picture_id]);
+          } catch (\RuntimeException $e) {
+            Drupal::logger('crm_integration')->error($e->getMessage());
+          }
+        }
+      }
+    }
+  }
+}

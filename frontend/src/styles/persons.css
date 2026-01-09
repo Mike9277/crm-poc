@@ -1,0 +1,269 @@
+/* persons.css - CRM table: crop reale + lettura completa */
+
+/* =========================
+   PAGE
+   ========================= */
+
+.persons-page {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.persons-page h1 {
+  color: #2d3748;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+/* =========================
+   CONTROLS
+   ========================= */
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #1a265f;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* =========================
+   BUTTONS
+   ========================= */
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background: #00D4FF;
+  color: white;
+}
+
+.btn-info {
+  background: #3ECF8E;
+  color: white;
+}
+
+.btn-danger {
+  background: #FF561D;
+  color: white;
+}
+
+/* =========================
+   TABLE CONTAINER
+   ========================= */
+
+.persons-table-container {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================
+   TABLE
+   ========================= */
+
+.persons-table {
+  width: 100%;
+  min-width: 1400px;
+  border-collapse: collapse;
+  background: white;
+  table-layout: fixed;
+}
+
+.persons-table thead {
+  background: linear-gradient(135deg, #00D4FF 0%, #408AF8 100%);
+  color: white;
+}
+
+.persons-table th {
+  padding: 1rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.persons-table td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+/* Hover riga */
+.persons-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+/* =========================
+   CELL CONTENT (KEY FIX)
+   ========================= */
+
+.cell-content {
+  max-width: 100%;
+  overflow-x: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Permetti lettura completa */
+.cell-content:hover,
+.cell-content:focus-within {
+  overflow-x: auto;
+}
+
+/* Scrollbar sottile */
+.cell-content::-webkit-scrollbar {
+  height: 6px;
+}
+
+.cell-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+/* =========================
+   COLUMN WIDTHS
+   ========================= */
+
+.persons-table th:nth-child(1),
+.persons-table td:nth-child(1) { width: 140px; }
+
+.persons-table th:nth-child(2),
+.persons-table td:nth-child(2) { width: 140px; }
+
+.persons-table th:nth-child(3),
+.persons-table td:nth-child(3) { width: 260px; }
+
+.persons-table th:nth-child(4),
+.persons-table td:nth-child(4) { width: 200px; }
+
+.persons-table th:nth-child(5),
+.persons-table td:nth-child(5) { width: 120px; }
+
+.persons-table th:nth-child(6),
+.persons-table td:nth-child(6) { width: 200px; }
+
+.persons-table th:nth-child(7),
+.persons-table td:nth-child(7) { width: 160px; }
+
+.persons-table th:nth-child(8),
+.persons-table td:nth-child(8) { width: 180px; }
+
+.persons-table th:nth-child(9),
+.persons-table td:nth-child(9) { width: 160px; }
+
+.persons-table th:nth-child(10),
+.persons-table td:nth-child(10) { width: 140px; }
+
+.persons-table th:nth-child(11),
+.persons-table td:nth-child(11) {
+  width: 80px;
+  text-align: center;
+}
+
+.persons-table th:nth-child(12),
+.persons-table td:nth-child(12) { width: 120px; }
+
+.persons-table th:nth-child(13),
+.persons-table td:nth-child(13) {
+  width: 180px;
+  text-align: center;
+}
+
+/* =========================
+   ACTION BUTTONS
+   ========================= */
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-btn.edit {
+  background: #00D4FF;
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background: #0A2540;
+  transform: scale(1.05);
+}
+
+.action-btn.delete {
+  background: #FF561D;
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background: #bb3204;
+  transform: scale(1.05);
+}
+
+/* =========================
+   STATES
+   ========================= */
+
+.loading,
+.error,
+.no-data {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 768px) {
+  .persons-page {
+    padding: 1rem;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "trust-itservices/crm_integration",
+  "description": "this module integrates with Trust-IT CRM",
+  "type": "drupal-custom-module",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Ezmiron Deniku",
+      "email": "e.deniku@trust-itservices.com"
+    },
+    {
+      "name": "Maicol Battistini",
+      "email": "m.battistini@trust-itservices.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4",
+    "ext-json": "*",
+    "mailjet/mailjet-apiv3-php": "^1.0"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest",
+    "rector/rector": "^2.0"
+  }
+}
