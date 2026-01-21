@@ -31,7 +31,7 @@ class BackendIntegration
         ], $extra_headers);
 
         if ($api_key) {
-            $headers['Authorization'] = 'Bearer ' . $api_key;
+            $headers['Authorization'] = 'Token ' . $api_key;
         }
 
         $this->defaultHeaders = $headers;
@@ -112,10 +112,24 @@ class BackendIntegration
                 $options['query'] = $query;
             }
 
+            // Ensure URI is relative (without leading /) so Guzzle uses the base_uri
+            // Guzzle treats URIs starting with / as absolute paths from root
+            if (str_starts_with($uri, '/')) {
+                $uri = substr($uri, 1); // Remove leading /
+            }
+            if (str_starts_with($uri, 'api/')) {
+                $uri = substr($uri, 4); // Remove /api prefix to avoid /api/api
+            }
+
+            $full_url = $this->baseUrl . '/' . $uri;
+            \Drupal::logger('crm_integration')->info("[REQUEST] $method $full_url");
+
             $response = $this->client->request($method, $uri, $options);
 
             $body = (string) $response->getBody();
             $parsedBody = $body ? json_decode($body) : new stdClass();
+
+            \Drupal::logger('crm_integration')->info("[RESPONSE] Status: {$response->getStatusCode()}");
 
             return (object) [
                 'status' => $response->getStatusCode(),
@@ -123,6 +137,7 @@ class BackendIntegration
             ];
 
         } catch (RequestException $e) {
+            \Drupal::logger('crm_integration')->error("[REQUEST_ERROR] " . $e->getMessage());
             throw new \RuntimeException(
                 'Backend request failed: ' . $e->getMessage(),
                 $e->getCode(),
@@ -154,7 +169,10 @@ class BackendIntegration
 
     protected function backendPost(string $resource, array $payload): stdClass
     {
+        // baseUrl already includes /api, so just pass resource directly
+        \Drupal::logger('crm_integration')->info("[backendPost] POST $this->baseUrl/$resource");
         $response = $this->request('POST', $resource, $payload);
+        \Drupal::logger('crm_integration')->info("[backendPost] Response status: {$response->status}");
         $this->assertSuccess($response);
         return $response->body;
     }

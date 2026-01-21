@@ -9,7 +9,8 @@ trait Website
   public function sendWebsite(string $name, string $url): string
   {
     try {
-      $response = $this->backendPost('/websites', [
+      \Drupal::logger('crm_integration')->info("[Website.sendWebsite] Posting to 'websites' with name='$name', url='$url'");
+      $response = $this->backendPost('websites', [
         'name' => $name,
         'url' => $url,
       ]);
@@ -57,13 +58,13 @@ trait Website
     ];
 
     try {
-      return $this->backendPost("/websites/{$websiteId}/users", $payload);
+      return $this->backendPost("websites/{$websiteId}/users", $payload);
 
     } catch (\RuntimeException $e) {
 
       // Website user già esistente → update
       if ($e->getCode() === 409 && property_exists($e, 'id')) {
-        return $this->backendPut("/website-users/{$e->id}", $payload);
+        return $this->backendPut("website-users/{$e->id}", $payload);
       }
 
       throw $e;
@@ -74,7 +75,7 @@ trait Website
     string $websiteUserId,
     array $values
   ): stdClass {
-    return $this->backendPut("/website-users/{$websiteUserId}", $values);
+    return $this->backendPut("website-users/{$websiteUserId}", $values);
   }
 
   /* ------------------------------------------------------------------

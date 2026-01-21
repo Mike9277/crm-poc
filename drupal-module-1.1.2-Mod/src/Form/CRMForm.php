@@ -4,7 +4,6 @@ namespace Drupal\crm_integration\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\webform\Entity\Webform;
 
 class CRMForm extends ConfigFormBase
 {
@@ -71,12 +70,6 @@ class CRMForm extends ConfigFormBase
       '#default_value' => $config->get('syncronize'),
     ];
 
-    // Get a list of all webforms without templates.
-    $webforms = Webform::loadMultiple();
-    $webforms = array_filter($webforms, static function (Webform $webform) {
-      return !$webform->isTemplate();
-    });
-
     // Fieldset for webform checkboxes.
     $form['webforms'] = [
       '#type' => 'fieldset',
@@ -89,12 +82,27 @@ class CRMForm extends ConfigFormBase
       '#markup' => $this->t('Select the webforms you want to synchronize.'),
     ];
 
-    // Create checkboxes for each webform.
-    foreach ($webforms as $webform_id => $webform) {
-      $form['webforms']['webform_' . $webform_id] = [
-        '#type' => 'checkbox',
-        '#title' => $webform->label(),
-        '#default_value' => $config->get('webform_' . $webform_id),
+    // Get a list of all webforms without templates - only if webform module is enabled.
+    if (\Drupal::moduleHandler()->moduleExists('webform')) {
+      $webforms = \Drupal::entityTypeManager()->getStorage('webform')->loadMultiple();
+      if (is_array($webforms)) {
+        $webforms = array_filter($webforms, static function ($webform) {
+          return method_exists($webform, 'isTemplate') && !$webform->isTemplate();
+        });
+      }
+
+      // Create checkboxes for each webform.
+      foreach ($webforms as $webform_id => $webform) {
+        $form['webforms']['webform_' . $webform_id] = [
+          '#type' => 'checkbox',
+          '#title' => $webform->label(),
+          '#default_value' => $config->get('webform_' . $webform_id),
+        ];
+      }
+    } else {
+      $form['webforms']['message'] = [
+        '#type' => 'item',
+        '#markup' => $this->t('Webform module is not installed. Please install it to manage webform synchronization.'),
       ];
     }
 
