@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,8 +25,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret")
 DEBUG = os.getenv("DJANGO_DEBUG") == "1"
 
+CRM_API_KEY = os.getenv("CRM_API_KEY", None)
+if CRM_API_KEY:
+    print(f"✓ CRM_API_KEY loaded: {CRM_API_KEY[:10]}...")
+else:
+    print("⚠ CRM_API_KEY not configured")
+
 ALLOWED_HOSTS = ["*"]  # In development, allow all hosts. Restrict in production.
 
+APPEND_SLASH = False
 
 # Application definition
 
@@ -39,6 +47,7 @@ INSTALLED_APPS = [
     
     # Third-party
     "rest_framework",
+    "rest_framework.authtoken",
     "django_filters",
     "corsheaders",
 
@@ -47,9 +56,11 @@ INSTALLED_APPS = [
     "users",
     "persons",
     "webforms",
+    "websites",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -57,9 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
+    "config.middleware.ApiKeyMiddleware",
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -82,6 +91,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.OrderingFilter",
@@ -107,7 +122,6 @@ DATABASES = {
         },
     }
 }
-
 
 
 # Password validation
@@ -140,8 +154,26 @@ USE_I18N = True
 
 USE_TZ = True
 
-CORS_ALLOW_ALL_ORIGINS = True
 
+# CORS Configuration
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-api-key',
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -162,6 +194,8 @@ LOGGING = {
         },
     },
 }
+
+# Static files
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'

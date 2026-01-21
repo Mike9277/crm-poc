@@ -16,10 +16,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from persons.views import PersonViewSet
+
+router = DefaultRouter()
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("api/", include("persons.urls")),
-    path("api/", include("webforms.urls")),
+    path('admin/', admin.site.urls),
+    path('api/', include('persons.urls')),
+    path('api/', include('webforms.urls')),
+    path('api/', include('websites.urls')), 
+    
+    #path("",include("websites.urls")),
+    # Alias per compatibilità Drupal: /contacts → /persons
+    path('api/contacts/', PersonViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='contact-list-alias'),
+    
+    path('api/contacts/<int:pk>/', PersonViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'delete': 'destroy'
+    }), name='contact-detail-alias'),
 ]
 
