@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { webformAPI } from '../services/api'
+import { WebformSyncButton } from '../components/WebformSyncButton'
 import '../styles/webforms.css'
 
 function WebFormsPage() {
@@ -35,6 +36,8 @@ function WebFormsPage() {
   return (
     <div className="webforms-page">
       <h1>Webform Submission</h1>
+
+      <WebformSyncButton onSyncSuccess={fetchData} />
 
       <div className="controls">
         <select

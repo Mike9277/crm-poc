@@ -3,6 +3,7 @@ import { personAPI } from '../services/api'
 import PersonForm from '../components/PersonForm'
 import PersonsList from '../components/PersonsList'
 import CSVImportModal from '../components/CSVImportModal'
+import { WebformSyncButton } from '../components/WebformSyncButton'
 import '../styles/persons.css'
 
 function PersonsPage() {
@@ -127,6 +128,8 @@ function PersonsPage() {
           personId={editingId}
         />
       )}
+
+      <WebformSyncButton onSyncSuccess={fetchPersons} />
 
       {showImport && (
         <CSVImportModal
