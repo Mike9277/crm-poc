@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: crm_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: crm
+    volumes:
+      - ./init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - crm_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+      interval: 10s
+
+  backend:
+    build: ./backend
+    container_name: crm_backend
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DB_ENGINE: django.db.backends.mysql
+      DB_NAME: crm
+      DB_USER: crm
+      DB_PASSWORD: crm
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DJANGO_SECRET_KEY: your-secret-key-change-in-production
+      DJANGO_DEBUG: 1
+      CRM_API_KEY: ${CRM_API_KEY}
+      CORS_ALLOW_ALL_ORIGINS: "True"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - crm_network
+
+  frontend:
+    build: ./frontend
+    container_name: crm_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://backend:8000/api
+    depends_on:
+      - backend
+    networks:
+      - crm_network
+
+volumes:
+  mysql_data:
+
+networks:
+  crm_network:
+    driver: bridge
