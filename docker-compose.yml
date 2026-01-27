@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: crm_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: crm
     volumes:
       - ./init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
@@ -54,14 +54,59 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://backend:8000/api
+      VITE_API_URL: http://localhost:8000/api
     depends_on:
       - backend
     networks:
       - crm_network
 
+  # ==========================================
+  # DRUPAL - NUOVO SERVIZIO
+  # ==========================================
+  drupal:
+    image: drupal:10.2.2-php8.3-apache
+    container_name: crm_drupal
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Volumi persistenti per Drupal
+      - drupal_modules:/opt/drupal/web/modules
+      - drupal_profiles:/opt/drupal/web/profiles
+      - drupal_themes:/opt/drupal/web/themes
+      - drupal_sites:/opt/drupal/web/sites
+      # Mount del modulo custom CRM Integration
+      - ./drupal-module-1.1.2-Mod:/opt/drupal/web/modules/custom/crm_integration:ro
+    environment:
+      # Configurazione database Drupal
+      MYSQL_DATABASE: drupal
+      MYSQL_USER: drupal
+      MYSQL_PASSWORD: drupal
+      MYSQL_HOSTNAME: mysql
+      MYSQL_PORT: 3306
+      # Configurazione Drupal
+      DRUPAL_PROFILE: standard
+    depends_on:
+      mysql:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - crm_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
 volumes:
   mysql_data:
+  # Volumi Drupal
+  drupal_modules:
+  drupal_profiles:
+  drupal_themes:
+  drupal_sites:
 
 networks:
   crm_network:

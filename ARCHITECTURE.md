@@ -522,6 +522,21 @@ Read Replicas:
     Primary (write) → Replica 1 (read)
                   → Replica 2 (read)
 
+Sharding (future):
+    Shard by person_id or webform_id
+```
+
+---
+
+## Future Architecture Improvements
+
+- [ ] Microservices: Separate sync service
+- [ ] Message Queue: Celery for async tasks
+- [ ] GraphQL: Alternative to REST API
+- [ ] Event Sourcing: Track all state changes
+- [ ] CQRS: Separate read/write models
+- [ ] Multi-tenant: Support multiple Drupal sites
+- [ ] Mobile App: React Native client
 
 ---
 

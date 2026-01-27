@@ -279,6 +279,7 @@ curl -X POST http://localhost:8000/api/webform-submissions/sync_from_drupal/ \
 - 📖 Check [README.md](README.md) for detailed docs
 - 🐛 Found a bug? Report on GitHub Issues
 - 💡 Have an idea? Open a GitHub Discussion
+- 🤝 Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 

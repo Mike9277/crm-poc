@@ -13,14 +13,12 @@ set PATH=%PATH%;C:\Program Files\nodejs
 REM ================================
 REM 1. Start Docker (Backend + MySQL + Drupal)
 REM ================================
-echo [1/3] Stopping existing containers to avoid conflicts...
-docker-compose down
-
-echo [1/3] Starting Backend, MySQL and Drupal...
+echo [1/3] Pulling latest images and starting services...
 echo.
 
-REM Avviamento forzato dei servizi
-docker-compose up --build -d mysql backend drupal
+REM Pull updates delle immagini e avvia i servizi
+docker-compose pull
+docker-compose up --build -d
 
 echo.
 echo Waiting for MySQL to be ready (3s)...
