@@ -77,6 +77,7 @@ services:
       - drupal_sites:/opt/drupal/web/sites
       # Mount del modulo custom CRM Integration
       - ./drupal-module-1.1.2-Mod:/opt/drupal/web/modules/custom/crm_integration:ro
+      - ./drupal-modules/contrib:/opt/drupal/web/modules/contrib:ro
     environment:
       # Configurazione database Drupal
       MYSQL_DATABASE: drupal
