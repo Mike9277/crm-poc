@@ -216,14 +216,10 @@ http://localhost:8000/api
 ```
 ---
 
-# 🎉 Il sistema è pronto!
+# Il sistema consente di:
 
-Puoi:
-
-- creare contatti  
+- creare o aggiornare contatti  
 - importare CSV  
 - sincronizzare webform da Drupal  
-- visualizzare dashboard e statistiche  
-- estendere backend, frontend e modulo Drupal  
 
-Buon lavoro! 🚀
+
