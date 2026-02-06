@@ -71,10 +71,10 @@ services:
       - "8080:80"
     volumes:
       # Volumi persistenti per Drupal
-      - drupal_modules:/opt/drupal/web/modules
-      - drupal_profiles:/opt/drupal/web/profiles
-      - drupal_themes:/opt/drupal/web/themes
-      - drupal_sites:/opt/drupal/web/sites
+      - ./drupal-data/modules:/opt/drupal/web/modules
+      - ./drupal-data/profiles:/opt/drupal/web/profiles
+      - ./drupal-data/themes:/opt/drupal/web/themes
+      - ./drupal-data/sites:/opt/drupal/web/sites
       # Mount del modulo custom CRM Integration
       - ./drupal-module-1.1.2-Mod:/opt/drupal/web/modules/custom/crm_integration:ro
       - ./drupal-modules/contrib:/opt/drupal/web/modules/contrib:ro
@@ -104,10 +104,10 @@ services:
 volumes:
   mysql_data:
   # Volumi Drupal
-  drupal_modules:
-  drupal_profiles:
-  drupal_themes:
-  drupal_sites:
+  # drupal_modules:
+  # drupal_profiles:
+  # drupal_themes:
+  # drupal_sites:
 
 networks:
   crm_network:
